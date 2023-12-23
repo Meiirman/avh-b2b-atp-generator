@@ -5,6 +5,8 @@ import pathlib
 import tkinter as tk
 import traceback
 from tkinter import filedialog, messagebox
+import atp
+import excel_generator
 
 from models.model import AutoClosingWindow
 
@@ -80,6 +82,13 @@ def set_work_folder(folder_path: str):
 
 
 def generate_b2b_excel():
+    source_path = get_value("prices_list_path")
+    work_folder = get_value("folder_path")
+
+    data = excel_generator.get_data(source_path=source_path, work_folder=work_folder)
+    generate_message : dict = atp.generate(data)
+    send_message(generate_message, out_of_queue=True)
+
     pass
 
 
