@@ -5,18 +5,18 @@ import pathlib
 import tkinter as tk
 import traceback
 from tkinter import filedialog, messagebox
-import atp
-import excel_generator
+from . import atp
+from . import excel_generator
 
 from models.model import AutoClosingWindow
 
 
 def get_value(parameter):
     try:
-        with open("settings/config.json", "r") as f:
+        with open("settings/config.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-            print(data)
-            print(data[parameter])
+            # print(data)
+            # print(data[parameter])
             return data[parameter]
     except:
         traceback.print_exc()
@@ -64,16 +64,16 @@ def browse_folder(entry_var: tk.StringVar) -> None:
 
 def set_work_folder(folder_path: str):
     config_path = "settings/config.json"
-    
+
     try:
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         data = {}
 
     data["folder_path"] = folder_path
 
-    with open(config_path, "w") as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     send_message(
@@ -85,9 +85,24 @@ def generate_b2b_excel():
     source_path = get_value("prices_list_path")
     work_folder = get_value("folder_path")
 
+    if get_value("default_prices_list_path_in_folder_path"):
+        try:
+            files = os.listdir(work_folder)
+            excel_files = [file for file in files if file.lower().endswith('.xlsx')]
+            if excel_files:
+               source_path = work_folder + "/" + excel_files[0]
+            else:
+                send_message("В директории нет файлов Excel (.xlsx)", "show_info")
+        except PermissionError:
+            send_message("Ошибка доступа к директории", "show_info")
+
     data = excel_generator.get_data(source_path=source_path, work_folder=work_folder)
-    generate_message : dict = atp.generate(data)
-    send_message(generate_message, out_of_queue=True)
+    send_message(message=data['message'], message_type="show_info")
+
+    if data["data"]:
+        generate_message : dict = atp.generate(data, template_path="templates/b2b_template.xlsx", output_folder_path=work_folder)
+        send_message(generate_message, message_type="show_info", out_of_queue=True)
+    
 
     pass
 
@@ -121,4 +136,4 @@ def change_excel_path(entry_var: tk.StringVar) -> None:
     with open(config_path, "w") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-    send_message('Новое местоположение Excel файла: "' + excel_path + '"', "show_info")
+    send_message('Новое местоположение Excel файла: "' + excel_path + '"', "show_info", message_type="show_info")
