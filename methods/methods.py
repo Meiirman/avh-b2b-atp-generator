@@ -100,6 +100,7 @@ def generate_b2b_excel():
             
         except PermissionError:
             send_message("Ошибка доступа к директории", "show_info")
+            return 0
     else:
         source_path = get_value("prices_list_path")
     
@@ -117,6 +118,7 @@ def generate_b2b_excel():
             return 0
     except PermissionError:
         send_message("Ошибка доступа к директории", "show_info")
+        return 0
 
 
     if proposal_path == None:
@@ -141,28 +143,48 @@ def generate_b2b_excel():
 
 
 def generate_b2b_html():
-    # Надо определить папки и файлы
-    # Надо найти HTML файл
-    # Спарсить данные
-    # Генерировать АТП
-
+    # РАБОЧАЯ ПАПКА
     work_folder = get_value("folder_path")
+
 
     files = os.listdir(work_folder)
 
     html_file_path = None
-    if files:
-        for file in files:
-            if file.endswith((".html")):
-                html_file_path = work_folder + "/" + file
-        if html_file_path == None:
-            send_message("В рабочей папке нет файлов HTML", "show_info")
+    try:
+        if files:
+            for file in files:
+                if file.endswith((".html")):
+                    html_file_path = work_folder + "/" + file
+            if html_file_path == None:
+                send_message("В рабочей папке нет файлов HTML", "show_info")
+                return 0
+        else:
+            send_message("В рабочей папке нет файлов", "show_info")
             return 0
-    else:
-        send_message("В рабочей папке нет файлов", "show_info")
+    except PermissionError:
+        send_message("Ошибка доступа к директории", "show_info")
         return 0
 
-    data = html_generator.get_data(source_path=html_file_path, work_folder=work_folder)
+    proposal_path = None
+    try:
+        excel_files = [file for file in files if file.lower().endswith(".xlsx")]
+        if excel_files:
+            for file in excel_files:
+                if file.lower().endswith(".xlsx") and "crq" in file.lower() and "заяв" in file.lower():
+                    proposal_path = work_folder + "/" + file
+        else:
+            send_message("В директории нет файлов Excel (.xlsx)", "show_info")
+            return 0
+    except PermissionError:
+        send_message("Ошибка доступа к директории", "show_info")
+        return 0
+    
+    if proposal_path == None:
+        send_message("В директории нет Заявки (.xlsx)", "show_info")
+        return 0
+
+    data = html_generator.get_data(source_path=html_file_path, work_folder=work_folder, proposal_path=proposal_path)
+    print(data)
 
 
 def change_excel_path(entry_var: tk.StringVar) -> None:

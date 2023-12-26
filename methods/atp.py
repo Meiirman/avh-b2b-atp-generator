@@ -4,6 +4,9 @@ from openpyxl import load_workbook
 from shutil import copyfile
 
 import pandas as pd
+import locale
+locale.setlocale(locale.LC_ALL, '')
+
 
 def generate(render_data, template_path, output_folder_path) -> dict:
     if render_data is None:
@@ -72,31 +75,73 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
             for i, row in enumerate(ws.iter_rows(min_row=1, max_row=150, min_col=1, max_col=30)):
                 for cell in row:
                     for key, value in render_data["data"].items():
-                        if "table_count_" in key:
+                        try:str_cell_value = str(cell.value)
+                        except: str_cell_value = "None"
+
+                        if "{{"+f"table_count_{i}"+"}}" in key and "{{" + f"table_count_{i}" + "}}" in str_cell_value:
                             try: cell.value = cell.value.replace("{{" + key + "}}", str(value).replace(".", ","))
                             except: pass
 
-                        elif "table_price_" in key:
-                            try: cell.value = cell.value.replace("{{" + key + "}}", str(value).replace(".", ","))
-                            except: pass
+                        elif "{{"+f"table_price_{i}"+"}}" in key and "{{"+f"table_price_{i}"+"}}" + "}}" in str_cell_value:
+                            try:
+                                cell.value = str(value).replace(".", ",")
+                                # cell.value = value
+                                cell.number_format = '$# ##0.00'  
+                            except: 
+                                pass
 
-                        elif "table_price_with_nds_" in key:
-                            try: cell.value = cell.value.replace("{{" + key + "}}", str(value).replace(".", ","))
-                            except: pass
+                        elif "{{"+f"table_price_with_nds_{i}"+"}}" in key and "{{"+f"table_price_with_nds_{i}"+"}}" in str_cell_value:
+                            try:
+                                cell.value = str(value).replace(".", ",")
+                                # cell.value = value
+                                cell.number_format = '$# ##0.00'  
+                            except: 
+                                pass
 
                         elif "00:00:00" in str(value) and cell.value and "{{date}}" in str(cell.value):
                             try: 
                                 from datetime import datetime
+                                months = {
+                                    "01" : " января ",
+                                    "02" : " февраля ",
+                                    "03" : " марта ",
+                                    "04" : " апреля ",
+                                    "05" : " мая ",
+                                    "06" : " июня ",
+                                    "07" : " июля ",
+                                    "08" : " августа ",
+                                    "09" : " сентября ",
+                                    "10" : " октября ",
+                                    "11" : " ноября ",
+                                    "12" : " декабря "
+                                }
+                                
                                 date_string = str(value)
                                 date_object = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
                                 formatted_date = date_object.strftime("%d.%m.%Y")
+                                dmy = str(formatted_date.split(".")[0])
+                                dmy += str(months[formatted_date.split(".")[1]])
+                                dmy += str(formatted_date.split(".")[2])
+                                formatted_date = dmy
                                 # cell.value = "от " + formatted_date
                                 cell.value = cell.value.replace("{{" + key + "}}", formatted_date)
                             except: 
                                 traceback.print_exc()
                         
+                        elif "price" in key and "price" in str(cell.value).lower() and f"{i}" + "}}" in str(cell.value).lower():
+                            try:
+                                cell.value = str(value).replace(".", ",")
+                                cell.number_format = '# ##0.00' 
+                            except: 
+                                traceback.print_exc()
+
                         else:                        
-                            try: cell.value = cell.value.replace("{{" + key + "}}", str(value))
+                            try: 
+                                try:
+                                    cell.value = cell.value.replace("{{" + key + "}}", str(value)).replace(".", ",")
+                                except:
+                                    cell.value = cell.value.replace("{{" + key + "}}", str(value))
+
                             except: pass
                         
 
@@ -117,18 +162,33 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
 
             # ws[f'A{16+len(list_table)}:Q{15+len(list_table)+30}']
             start_row = 14+len(list_table)
+            
 
-            ws[f'L{start_row}'] = f'=SUM(L{15}:L{start_row-1})'
-            ws[f'L{start_row+1}'] = f'=L{start_row}*1.12'
+            fwea = []
+            for row in list_table:
+                try: fwea.append(float(row["price"]))
+                except: pass
 
-            ws[f'B11'] = str(ws[f'B11'].value).replace('L79', f'L{start_row}')
+
+            locale.setlocale(locale.LC_ALL, '')
+
+            TOTAL_SUM = locale.format_string("%0.2f", round(sum(fwea), 2), grouping=True)
+            TOTAL_NDS = locale.format_string("%0.2f", round(sum(fwea)*0.12, 2), grouping=True)
+            TOTAL_SUM_NDS = locale.format_string("%0.2f", round(sum(fwea)*1.12, 2), grouping=True)
+
+
+
+            ws[f'L{start_row}'] = f'{TOTAL_SUM}'
+            ws[f'L{start_row+1}'] = f'{TOTAL_SUM_NDS}'
+
+            ws[f'B11'] = str(ws[f'B11'].value).replace('L80', f'{TOTAL_NDS}').replace('L79', f'{TOTAL_SUM}')
 
             ws.merge_cells(f'E{start_row+0}:K{start_row+0}')
             ws.merge_cells(f'E{start_row+1}:K{start_row+1}')
             
-            ws.merge_cells(f'E{start_row+3}:L{start_row+3}')
-            ws.merge_cells(f'E{start_row+4}:L{start_row+4}')
-            ws.merge_cells(f'E{start_row+5}:L{start_row+5}')
+            ws.merge_cells(f'E{start_row+3}:N{start_row+3}')
+            ws.merge_cells(f'E{start_row+4}:N{start_row+4}')
+            ws.merge_cells(f'E{start_row+5}:N{start_row+5}')
             
 
             
@@ -146,7 +206,13 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
             ws.merge_cells(f'E{start_row+14+1}:L{start_row+14+1}')
             ws.merge_cells(f'E{start_row+15+1}:L{start_row+15+1}')
             ws.merge_cells(f'E{start_row+16+1}:L{start_row+16+1}')
-            ws.merge_cells(f'E{start_row+14+1}:L{start_row+14+1}')
+
+            ws.merge_cells(f'E{start_row+18+1}:H{start_row+18+1}')
+            ws.merge_cells(f'E{start_row+19+1}:H{start_row+19+1}')
+            ws.merge_cells(f'E{start_row+20+1}:H{start_row+20+1}')
+            ws.merge_cells(f'E{start_row+21+1}:H{start_row+21+1}')
+            ws.merge_cells(f'E{start_row+22+1}:H{start_row+22+1}')
+            ws.merge_cells(f'E{start_row+23+1}:H{start_row+23+1}')
 
 
 
@@ -169,8 +235,8 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
             try:f_name += str(render_data["data"]['BS_NUMBER'])
             except: pass
 
-            try:f_name += " " + render_data["data"]["TYPE_OF_WORK"]
-            except: pass
+            # try:f_name += " " + render_data["data"]["TYPE_OF_WORK"]
+            # except: pass
 
             try:f_name += " " + render_data["data"]["BS_COMPANY"]
             except: pass

@@ -6,7 +6,7 @@
   "show_debug": true,
   "learning_mode": true,
   "generator_b2b_xlsx_button_visible": true,
-  "generator_b2b_html_button_visible": false,
+  "generator_b2b_html_button_visible": true,
   "files_path_modification_access": false,
   "default_prices_list_path_in_folder_path": true,
   "prices_list_path": "static/ТЦП 188567.xlsx",
