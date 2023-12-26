@@ -84,9 +84,21 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
                             try: cell.value = cell.value.replace("{{" + key + "}}", str(value).replace(".", ","))
                             except: pass
 
+                        elif "00:00:00" in str(value) and cell.value and "{{date}}" in str(cell.value):
+                            try: 
+                                from datetime import datetime
+                                date_string = str(value)
+                                date_object = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+                                formatted_date = date_object.strftime("%d.%m.%Y")
+                                # cell.value = "от " + formatted_date
+                                cell.value = cell.value.replace("{{" + key + "}}", formatted_date)
+                            except: 
+                                traceback.print_exc()
+                        
                         else:                        
                             try: cell.value = cell.value.replace("{{" + key + "}}", str(value))
                             except: pass
+                        
 
 
             del_rows = []
@@ -101,10 +113,10 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
                 for cell in row:
                     cell.value = None
 
-            ws.delete_rows(15+len(list_table), amount=64-len(list_table))    
+            ws.delete_rows(14+len(list_table), amount=len(del_rows))    
 
             # ws[f'A{16+len(list_table)}:Q{15+len(list_table)+30}']
-            start_row = 15+len(list_table)
+            start_row = 14+len(list_table)
 
             ws[f'L{start_row}'] = f'=SUM(L{15}:L{start_row-1})'
             ws[f'L{start_row+1}'] = f'=L{start_row}*1.12'
@@ -119,6 +131,25 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
             ws.merge_cells(f'E{start_row+5}:L{start_row+5}')
             
 
+            
+            ws.merge_cells(f'J{start_row+7+1}:K{start_row+7+1}')
+            ws.merge_cells(f'J{start_row+8+1}:K{start_row+8+1}')
+            ws.merge_cells(f'L{start_row+7+1}:M{start_row+7+1}')
+            ws.merge_cells(f'L{start_row+8+1}:M{start_row+8+1}')
+
+            ws.merge_cells(f'H{start_row+11+1}:J{start_row+11+1}')
+            ws.merge_cells(f'L{start_row+11+1}:N{start_row+11+1}')
+            ws.merge_cells(f'H{start_row+12+1}:J{start_row+12+1}')
+            ws.merge_cells(f'L{start_row+12+1}:N{start_row+12+1}')
+
+
+            ws.merge_cells(f'E{start_row+14+1}:L{start_row+14+1}')
+            ws.merge_cells(f'E{start_row+15+1}:L{start_row+15+1}')
+            ws.merge_cells(f'E{start_row+16+1}:L{start_row+16+1}')
+            ws.merge_cells(f'E{start_row+14+1}:L{start_row+14+1}')
+
+
+
 
 
             # # Применяем стили к новым строкам
@@ -129,15 +160,53 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
             #     ws.row_dimensions[row_num].height = 0
 
 
+            print("render_data")
+            print(render_data)
+            print("render_data")
+
+            f_name = "АКТ "
+
+            try:f_name += str(render_data["data"]['BS_NUMBER'])
+            except: pass
+
+            try:f_name += " " + render_data["data"]["TYPE_OF_WORK"]
+            except: pass
+
+            try:f_name += " " + render_data["data"]["BS_COMPANY"]
+            except: pass
+
+            try:f_name += " " + render_data["data"]["ORDER_REGION"]
+            except: pass
+
+            try:f_name += " " + render_data["data"]["BS_ADDRESS"]
+            except: pass
+
+            try:f_name = f_name.strip().replace("\\", "-").replace("/", "-")
+            except: pass
+
+            try:f_name = f_name.split("\n")[0]
+            except: pass
+
+
             # Сохраняем созданную копию с измененными значениями
-            wb.save(os.path.join(output_folder_path, "output.xlsx"))
+            wb.save(os.path.join(output_folder_path, f_name + ".xlsx"))
+
+            os.remove(os.path.join(output_folder_path, "output.xlsx"))
 
 
 
 
 
 
-            return {"message": "Файл успешно создан и изменен: " + os.path.join(output_folder_path, "output.xlsx")}
+            try:
+                import requests
+                import datetime
+                def send_report(text=None, process=None, responsible=None):
+                    requests.post(f"https://script.google.com/macros/s/AKfycbzDwjE6Pu1a7otho2EHwbI-4yNoEmLijTfwWfI3toWpDpJ6rc-O1pKljV6XMLJmQIyJ/exec?time={datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S')}&process={process}&responsible={responsible}&text={text}")
+                send_report(text="B2B АТП Генератор", process="B2B АТП Генератор", responsible=os.getlogin())
+            except: pass
+
+            return {"message": "Файл успешно создан и изменен: " + os.path.join(output_folder_path, os.path.join(output_folder_path, f_name + ".xlsx"))}
 
         except Exception as e:
             return {"message": f"Произошла ошибка: {str(traceback.format_exc())}"}
