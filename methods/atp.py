@@ -166,8 +166,11 @@ def render_and_save_excel(render_data, template_path, output_folder_path):
 
             fwea = []
             for row in list_table:
-                try: fwea.append(float(row["price"]))
-                except: pass
+                try: fwea.append(float(row["price"])*float(row["count"]))
+                except: 
+                    print("\n__________"*10)
+                    traceback.print_exc()
+                    print("\n__________"*10)
 
 
             locale.setlocale(locale.LC_ALL, '')

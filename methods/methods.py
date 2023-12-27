@@ -183,8 +183,24 @@ def generate_b2b_html():
         send_message("В директории нет Заявки (.xlsx)", "show_info")
         return 0
 
-    data = html_generator.get_data(source_path=html_file_path, work_folder=work_folder, proposal_path=proposal_path)
+
+    data = html_generator.get_data(html_file_path=html_file_path,work_folder=work_folder, proposal_path=proposal_path)
+    print("data")
+    print("data")
+    print("data")
+    print("data")
     print(data)
+    
+    send_message(message=data["message"], message_type="show_info")
+
+    if data["data"]:
+        generate_message: dict = atp.generate(
+            data,
+            template_path="templates/b2b_template.xlsx",
+            output_folder_path=work_folder,
+        )
+        send_message(generate_message["message"], message_type="show_info", out_of_queue=True)
+
 
 
 def change_excel_path(entry_var: tk.StringVar) -> None:
